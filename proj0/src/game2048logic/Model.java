@@ -85,6 +85,14 @@ public class Model {
      * */
     public boolean emptySpaceExists() {
         // TODO: Task 2. Fill in this function.
+        // 遍历所有坐标，检查是否有空白位置
+        for (int x = 0; x < size(); x++) {
+            for (int y = 0; y < size(); y++) {
+                if (board.tile(x, y) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -95,6 +103,14 @@ public class Model {
      */
     public boolean maxTileExists() {
         // TODO: Task 3. Fill in this function.
+        for (int x = 0; x < size(); x++) {
+            for (int y = 0; y < size(); y++) {
+                Tile t = board.tile(x, y);
+                if (t != null && t.value() == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -106,6 +122,37 @@ public class Model {
      */
     public boolean atLeastOneMoveExists() {
         // TODO: Fill in this function.
+        if (emptySpaceExists()) {
+            return true;
+        }
+        // 存在相邻同值瓷砖（检查上下左右）
+        int boardSize = size();
+        for (int x = 0; x < boardSize; x++) {
+            for (int y = 0; y < boardSize; y++) {
+                Tile current = board.tile(x, y);
+                if (current == null) {
+                    continue;
+                }
+
+                // 检查右侧相邻
+                if (x + 1 < boardSize) {
+                    Tile right = board.tile(x + 1, y);
+                    if (right != null && right.value() == current.value()) {
+                        return true;
+                    }
+                }
+
+                // 检查上方相邻
+                if (y + 1 < boardSize) {
+                    Tile up = board.tile(x, y + 1);
+                    if (up != null && up.value() == current.value()) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // 无有效移动
         return false;
     }
 
@@ -125,10 +172,40 @@ public class Model {
      */
     public void moveTileUpAsFarAsPossible(int x, int y) {
         Tile currTile = board.tile(x, y);
+        if (currTile == null || currTile.wasMerged()) {
+            return; // 空瓷砖或已合并的瓷砖不处理
+        }
         int myValue = currTile.value();
         int targetY = y;
 
+
         // TODO: Tasks 5, 6, and 10. Fill in this function.
+// 向上查找可移动/合并的最远位置
+        while (targetY + 1 < size()) {
+            int nextY = targetY + 1;
+            Tile nextTile = board.tile(x, nextY);
+
+            // 情况1：下一个位置为空，继续上移
+            if (nextTile == null) {
+                targetY = nextY;
+            } else {
+                // 情况2：下一个位置有瓷砖，检查是否可合并
+                if (nextTile.value() == myValue && !nextTile.wasMerged()) {
+                    // 合并瓷砖：移动当前瓷砖到nextY位置，合并后更新得分
+                    board.move(x, nextY, currTile);
+                    score += myValue * 2;
+                    return; // 合并后终止，避免重复合并
+                }
+                // 不可合并，停止上移
+                break;
+            }
+        }
+
+        // 情况3：仅移动（无合并），目标位置与原位置不同时执行移动
+        if (targetY != y) {
+            board.move(x, targetY, currTile);
+        }
+
     }
 
     /** Handles the movements of the tilt in column x of the board
@@ -138,10 +215,22 @@ public class Model {
      * */
     public void tiltColumn(int x) {
         // TODO: Task 7. Fill in this function.
+        for (int y = 0; y < size(); y++) {
+            moveTileUpAsFarAsPossible(x, y);
+        }
     }
 
     public void tilt(Side side) {
         // TODO: Tasks 8 and 9. Fill in this function.
+        board.setViewingPerspective(side);
+
+        // 遍历每一列，执行列倾斜逻辑
+        for (int x = 0; x < size(); x++) {
+            tiltColumn(x);
+        }
+
+        // 恢复默认北视角
+        board.setViewingPerspective(Side.NORTH);
     }
 
     /** Tilts every column of the board toward SIDE.
